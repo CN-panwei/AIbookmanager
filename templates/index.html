@@ -170,16 +170,17 @@
         </div>
     </div>
 
-    <!-- New Category Modal -->
+    <!-- Category Modal (New / Edit) -->
     <div id="category-modal" class="modal">
         <div class="modal-overlay"></div>
         <div class="modal-content modal-category">
             <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
-            <h4><img src="/static/icon/folder.svg" class="icon-svg title" alt="">新建分类</h4>
+            <h4 id="category-modal-title"><img src="/static/icon/folder.svg" class="icon-svg title" alt="">新建分类</h4>
+            <input type="hidden" id="edit-category-id" value="">
             <input type="text" id="new-category-name" placeholder="分类名称">
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeCategoryModal()">取消</button>
-                <button class="btn-primary" onclick="createCategory()">创建</button>
+                <button class="btn-primary" id="category-modal-btn" onclick="handleCategoryModal()">创建</button>
             </div>
         </div>
     </div>

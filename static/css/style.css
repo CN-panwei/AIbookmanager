@@ -146,6 +146,44 @@ body {
     color: var(--accent);
 }
 
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    margin-left: 4px;
+}
+
+.nav-item:hover .nav-actions {
+    opacity: 1;
+}
+
+.nav-action-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    padding: 0;
+    transition: all 0.15s;
+}
+
+.nav-action-btn:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--accent);
+}
+
+.nav-action-btn.delete:hover {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
 .nav-divider {
     height: 1px;
     background: var(--border);

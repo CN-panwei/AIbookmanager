@@ -96,6 +96,14 @@ function renderCategories() {
                 <img src="/static/icon/folder.svg" class="nav-icon" alt="">
                 <span class="nav-label">${escapeHtml(cat.name)}</span>
                 <span class="nav-count">${count}</span>
+                <span class="nav-actions" onclick="event.stopPropagation()">
+                    <button class="nav-action-btn" onclick="showEditCategoryModal(${cat.id})" title="编辑">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="nav-action-btn delete" onclick="deleteCategory(${cat.id})" title="删除">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </span>
             </div>
         `;
     }).join("");
@@ -178,18 +186,50 @@ async function onCategoryDrop(ev, catId) {
     }
 }
 
-async function createCategory() {
+async function handleCategoryModal() {
     const name = document.getElementById("new-category-name").value.trim();
     if (!name) return showToast("请输入分类名称", "error");
+    const editId = document.getElementById("edit-category-id").value;
     try {
-        await api("/api/categories", {
-            method: "POST",
-            body: JSON.stringify({ name }),
-        });
-        showToast("分类创建成功", "success");
+        if (editId) {
+            // Edit mode
+            await api(`/api/categories/${editId}`, {
+                method: "PUT",
+                body: JSON.stringify({ name }),
+            });
+            showToast("分类修改成功", "success");
+        } else {
+            // Create mode
+            await api("/api/categories", {
+                method: "POST",
+                body: JSON.stringify({ name }),
+            });
+            showToast("分类创建成功", "success");
+        }
         closeCategoryModal();
-        document.getElementById("new-category-name").value = "";
         await loadCategories();
+    } catch (e) {
+        showToast(e.message, "error");
+    }
+}
+
+async function deleteCategory(catId) {
+    const cat = state.categories.find(c => c.id === catId);
+    if (!cat) return;
+    const count = getCategoryBookCount(catId);
+    if (count > 0) {
+        return showToast("该分类下还有图书，请先移走图书再删除", "error");
+    }
+    if (!confirm(`确定要删除分类「${cat.name}」吗？`)) return;
+    try {
+        await api(`/api/categories/${catId}`, { method: "DELETE" });
+        showToast("分类已删除", "success");
+        if (state.currentCategory === catId) {
+            state.currentCategory = null;
+            document.getElementById("section-title").textContent = "全部图书";
+        }
+        await loadCategories();
+        await loadBooks();
     } catch (e) {
         showToast(e.message, "error");
     }
@@ -1062,11 +1102,27 @@ function closeBookModal() {
 }
 
 function showNewCategoryModal() {
+    document.getElementById("category-modal-title").innerHTML = '<img src="/static/icon/folder.svg" class="icon-svg title" alt="">新建分类';
+    document.getElementById("category-modal-btn").textContent = "创建";
+    document.getElementById("edit-category-id").value = "";
+    document.getElementById("new-category-name").value = "";
+    document.getElementById("category-modal").classList.add("active");
+}
+
+function showEditCategoryModal(catId) {
+    const cat = state.categories.find(c => c.id === catId);
+    if (!cat) return;
+    document.getElementById("category-modal-title").innerHTML = '<img src="/static/icon/folder.svg" class="icon-svg title" alt="">编辑分类';
+    document.getElementById("category-modal-btn").textContent = "保存";
+    document.getElementById("edit-category-id").value = catId;
+    document.getElementById("new-category-name").value = cat.name;
     document.getElementById("category-modal").classList.add("active");
 }
 
 function closeCategoryModal() {
     document.getElementById("category-modal").classList.remove("active");
+    document.getElementById("edit-category-id").value = "";
+    document.getElementById("new-category-name").value = "";
 }
 
 // ===== Utils =====

@@ -117,47 +117,16 @@ async def create_category(data: dict):
 
 
 @app.delete("/api/categories/{category_id}")
-async def remove_category(category_id: int, delete_books: bool = False):
+async def remove_category(category_id: int):
     cat = await db.get_category_by_id(category_id)
     if not cat:
         raise HTTPException(status_code=404, detail="分类不存在")
-    # Update books in this category to no category? Or delete them?
-    # For simplicity: delete books and their files if delete_books=True, else move books to uncategorized
+    # Check if category has books
     books = await db.get_books(category_id=category_id)
-    if delete_books:
-        for book in books:
-            delete_book_file(book["file_path"])
-            cover = book.get("cover_path")
-            if cover and "default" not in cover:
-                cp = Path("static") / cover
-                if cp.exists():
-                    cp.unlink()
-            await db.delete_book(book["id"])
-        delete_category_folder(cat["folder_name"], delete_books=True)
-    else:
-        # Move books to uncategorized folder
-        uncategorized = "uncategorized"
-        ensure_category_folder(uncategorized)
-        for book in books:
-            old_full = get_books_root() / book["file_path"]
-            new_rel = f"{uncategorized}/{old_full.name}"
-            new_full = get_books_root() / new_rel
-            # Handle name conflict
-            counter = 1
-            original = new_full
-            while new_full.exists():
-                stem = original.stem
-                suffix = original.suffix
-                new_full = original.parent / f"{stem}_{counter}{suffix}"
-                counter += 1
-            if old_full.exists():
-                old_full.rename(new_full)
-                new_rel = str(new_full.relative_to(get_books_root()))
-            else:
-                new_rel = book["file_path"]
-            await db.update_book(book["id"], file_path=new_rel, category_id=None)
-        # Remove empty folder
-        delete_category_folder(cat["folder_name"], delete_books=False)
+    if books:
+        raise HTTPException(status_code=400, detail="该分类下还有图书，无法删除")
+    # Remove empty folder
+    delete_category_folder(cat["folder_name"], delete_books=False)
     await db.delete_category(category_id)
     return {"success": True}
 
