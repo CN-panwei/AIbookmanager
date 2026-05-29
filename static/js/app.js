@@ -51,9 +51,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         // ignore
     }
     // Heartbeat: keep server alive while page is open
-    setInterval(() => {
-        fetch("/api/ping").catch(() => {});
-    }, 10000);
+    // Use Page Visibility API to handle background tab throttling
+    const sendPing = () => fetch("/api/ping").catch(() => {});
+    sendPing(); // immediate ping on load
+
+    let pingInterval = setInterval(sendPing, 20000);
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            // Page became visible: send immediate ping and restore normal interval
+            sendPing();
+            if (pingInterval) clearInterval(pingInterval);
+            pingInterval = setInterval(sendPing, 20000);
+        }
+    });
 });
 
 // ===== Categories =====

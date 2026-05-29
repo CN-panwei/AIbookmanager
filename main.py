@@ -26,8 +26,8 @@ from services.ai_service import generate_summary, generate_note, test_api_key
 
 # Global heartbeat state
 _last_ping_time = time.time()
-_HEARTBEAT_TIMEOUT = 30  # seconds without ping before auto-exit
-_HEARTBEAT_CHECK_INTERVAL = 15  # seconds between checks
+_HEARTBEAT_TIMEOUT = 180  # seconds without ping before auto-exit (3 min)
+_HEARTBEAT_CHECK_INTERVAL = 60  # seconds between checks
 
 
 async def _heartbeat_checker():

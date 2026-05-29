@@ -11,6 +11,33 @@
 - 🔍 **搜索**：按书名、作者实时搜索
 - 🎨 **现代 UI**：响应式卡片布局，优雅的交互体验
 
+## 安装
+
+### 环境要求
+
+- **Python 3.8 或更高版本**
+- **macOS / Windows / Linux**
+
+### 首次安装
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/CN-panwei/AIbookmanager.git
+cd AIbookmanager
+
+# 2. 创建虚拟环境
+python3 -m venv venv
+
+# 3. 激活虚拟环境
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate.bat     # Windows
+
+# 4. 安装依赖
+pip install -r requirements.txt
+```
+
+安装完成后，后续启动**无需重复安装依赖**（`start.sh` / `start.bat` 会自动检测并跳过）。
+
 ## 快速启动
 
 ### macOS（推荐）
