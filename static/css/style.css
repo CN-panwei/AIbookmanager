@@ -66,6 +66,15 @@ body {
     margin: 0 auto;
 }
 
+.sidebar-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+}
+
 .sidebar-nav {
     flex: 1;
     padding: 8px 0;
