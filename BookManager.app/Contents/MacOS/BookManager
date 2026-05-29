@@ -2,7 +2,7 @@
 # BookManager macOS Launcher
 # 自动定位到项目目录并启动
 
-PROJECT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 # 如果项目目录下有 start.sh，用它启动

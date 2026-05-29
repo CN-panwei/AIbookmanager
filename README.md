@@ -42,7 +42,7 @@ pip install -r requirements.txt
 
 ### macOS（推荐）
 
-把 `launcher/BookManager.app` 拖到 **Dock** 栏，以后像普通 App 一样点击图标即可启动。
+把 `BookManager.app` 拖到 **Dock** 栏，以后像普通 App 一样点击图标即可启动。
 
 或者输入命令一键启动：
 
@@ -50,11 +50,40 @@ pip install -r requirements.txt
 ./start.sh
 ```
 
-详细启动方式见 [`launcher/README.md`](launcher/README.md)，包括：
-- **Dock 图标双击**（像普通 App）
-- **终端命令 `bm`**（全局快捷命令）
-- **键盘快捷键**（Raycast 或系统快捷键）
-- **双击 `.command` 文件**（在 Terminal 中启动）
+### macOS 启动方式
+
+#### 方式一：Dock 图标双击启动（推荐）
+
+1. 右键点击 `BookManager.app` → 「显示简介」→ 可以拖一个图标到左上角替换默认图标
+2. 将 `BookManager.app` **拖到 Dock** 栏上
+3. 以后点击 Dock 图标即可启动，服务在后台运行，浏览器自动打开
+
+> ⚠️ 注意：macOS 可能会提示「无法打开，因为无法验证开发者」，右键点击 → 「打开」即可。
+
+#### 方式二：终端命令 `bm` 启动
+
+```bash
+# 创建全局命令（只需执行一次）
+ln -s "$(pwd)/bm" /usr/local/bin/bm
+
+# 以后在任意目录输入
+bm
+```
+
+#### 方式三：双击 `.command` 文件启动
+
+右键点击 `BookManager.command` → 「显示简介」→ 勾选「以终端方式打开」（如果未勾选），以后双击该文件即可启动。
+
+#### 方式四：键盘快捷键启动
+
+用 [Raycast](https://www.raycast.com/)：新建 Script Command，输入：
+```bash
+#!/bin/bash
+cd /你的项目路径/BookManager
+./start.sh
+```
+
+---
 
 ### Windows
 

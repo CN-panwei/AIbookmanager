@@ -20,11 +20,15 @@ if not exist "venv\" (
 
 call venv\Scripts\activate.bat
 
-echo → 安装依赖...
-pip install -q --upgrade pip
-pip install -q -r requirements.txt
-
-echo ✓ 依赖就绪
+if not exist "venv\.deps_installed" (
+    echo → 安装依赖...
+    pip install -q --upgrade pip
+    pip install -q -r requirements.txt
+    echo. > venv\.deps_installed
+    echo ✓ 依赖安装完成
+) else (
+    echo ✓ 依赖已是最新，跳过安装
+)
 echo → 启动服务...
 echo.
 echo    🌐 服务地址: http://localhost:8000

@@ -2,7 +2,7 @@
 # BookManager 命令行快捷启动器
 # 用法：将 bm 文件复制到 /usr/local/bin/ 后，在任意目录输入 bm 即可启动
 
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
 
 if [ -f "$PROJECT_DIR/start.sh" ]; then
