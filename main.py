@@ -40,6 +40,10 @@ async def _heartbeat_checker():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure required directories exist
+    Path("books").mkdir(parents=True, exist_ok=True)
+    Path("static/covers").mkdir(parents=True, exist_ok=True)
+
     await db.init_db()
     # Start heartbeat checker in background
     task = asyncio.create_task(_heartbeat_checker())
