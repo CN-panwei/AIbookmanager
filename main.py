@@ -263,7 +263,10 @@ async def get_book(book_id: int):
 
 
 @app.put("/api/books/{book_id}/category")
-async def update_book_category(book_id: int, category_id: int = Form(...)):
+async def update_book_category(book_id: int, request: Request):
+    form = await request.form()
+    category_id = int(form.get("category_id"))
+
     book = await db.get_book_by_id(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="图书不存在")
