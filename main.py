@@ -57,6 +57,10 @@ async def lifespan(app: FastAPI):
             pass
 
 
+# Ensure required directories exist before mounting
+Path("books").mkdir(parents=True, exist_ok=True)
+Path("static/covers").mkdir(parents=True, exist_ok=True)
+
 app = FastAPI(title="BookManager", lifespan=lifespan)
 
 # Mount static files
