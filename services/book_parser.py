@@ -125,17 +125,23 @@ def parse_epub(file_path: str) -> Dict[str, Any]:
         if cover_bytes:
             result["cover_bytes"] = cover_bytes
 
-        # 提取前几个章节文本
+        # 提取文本内容（遍历所有文档项，跳过结构性短页面）
         texts = []
+        total_chars = 0
         doc_items = [item for item in book.get_items() if item.get_type() == ebooklib.ITEM_DOCUMENT]
-        for item in doc_items[:3]:
+        for item in doc_items:
             content = item.get_content().decode("utf-8", errors="ignore")
             # 简单去除 HTML 标签
             import re
             text = re.sub(r'<[^>]+>', '', content)
             text = re.sub(r'\s+', ' ', text).strip()
-            if text:
-                texts.append(text)
+            # 跳过过短的页面（封面、版权页、目录页等通常 < 300 字符）
+            if len(text) < 300:
+                continue
+            texts.append(text)
+            total_chars += len(text)
+            if total_chars >= 8000:
+                break
         result["sample_text"] = "\n".join(texts)[:8000]
 
         # 估算页数（按 HTML 文档数粗略估算）
