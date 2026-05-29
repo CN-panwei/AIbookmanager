@@ -11,3 +11,8 @@ __pycache__/
 
 # 系统文件
 .DS_Store
+
+# 备份目录
+.backup/
+backups/
+
