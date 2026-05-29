@@ -268,6 +268,26 @@ async def get_notes_by_book(book_id: int) -> List[Dict[str, Any]]:
         await db.close()
 
 
+async def get_notes_by_ids(note_ids: List[int]) -> List[Dict[str, Any]]:
+    db = await get_db()
+    try:
+        placeholders = ",".join("?" for _ in note_ids)
+        cursor = await db.execute(
+            f"""
+            SELECT n.*, b.title as book_title
+            FROM notes n
+            JOIN books b ON n.book_id = b.id
+            WHERE n.id IN ({placeholders})
+            ORDER BY n.updated_at DESC
+            """,
+            tuple(note_ids)
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await db.close()
+
+
 async def update_note(note_id: int, title: Optional[str] = None, content: Optional[str] = None):
     db = await get_db()
     try:

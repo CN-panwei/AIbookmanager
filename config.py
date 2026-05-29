@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.2.3"
 
 BASE_DIR = Path(__file__).parent.resolve()
 BOOKS_ROOT = BASE_DIR / "books"

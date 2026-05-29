@@ -279,6 +279,7 @@ function renderNotesHeader() {
         header.innerHTML = `
             <h4><img src="/static/icon/note.svg" class="icon-svg title" alt="">笔记 <span style="font-size:12px;color:var(--text-light);font-weight:400;">(已选 ${state.selectedNoteIds.size} 条)</span></h4>
             <div class="notes-header-actions">
+                <button class="btn-small" style="background:#e0f2fe;color:#0284c7;" onclick="batchExportNotes()">导出选中</button>
                 <button class="btn-small" style="background:#fee2e2;color:#ef4444;" onclick="batchDeleteNotes()">删除选中</button>
                 <button class="btn-small" onclick="toggleBatchMode()">取消</button>
             </div>
@@ -728,6 +729,44 @@ async function batchDeleteNotes() {
         state.batchMode = false;
         state.selectedNoteIds.clear();
         state.notes = await api(`/api/books/${state.currentBook.id}/notes`);
+        renderNotesHeader();
+        renderNotesList();
+    } catch (e) {
+        showToast(e.message, "error");
+    }
+}
+
+async function batchExportNotes() {
+    if (state.selectedNoteIds.size === 0) {
+        showToast("请先选择要导出的笔记", "error");
+        return;
+    }
+
+    const noteIds = Array.from(state.selectedNoteIds);
+    try {
+        const resp = await fetch("/api/notes/export", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ note_ids: noteIds }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.detail || "导出失败");
+        }
+        // Trigger download
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `notes_export_${new Date().toISOString().slice(0,10)}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        showToast(`已导出 ${noteIds.length} 条笔记`, "success");
+        state.batchMode = false;
+        state.selectedNoteIds.clear();
         renderNotesHeader();
         renderNotesList();
     } catch (e) {

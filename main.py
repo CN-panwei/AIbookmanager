@@ -6,12 +6,15 @@ import signal
 import subprocess
 import platform
 import tempfile
+import zipfile
+import re
+from io import BytesIO
 from pathlib import Path
 from typing import Optional, List
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from contextlib import asynccontextmanager
 
 import database as db
@@ -46,6 +49,14 @@ async def lifespan(app: FastAPI):
     Path("static/covers").mkdir(parents=True, exist_ok=True)
 
     await db.init_db()
+
+    # Ensure default category exists for first-time users
+    cats = await db.get_categories()
+    if not cats:
+        folder_name = to_pinyin_folder_name("未分类")
+        ensure_category_folder(folder_name)
+        await db.create_category("未分类", folder_name)
+
     # Start heartbeat checker in background
     task = asyncio.create_task(_heartbeat_checker())
     try:
@@ -387,6 +398,64 @@ async def remove_note(note_id: int):
         raise HTTPException(status_code=404, detail="笔记不存在")
     await db.delete_note(note_id)
     return {"success": True}
+
+
+@app.post("/api/notes/export")
+async def export_notes(data: dict):
+    note_ids = data.get("note_ids", [])
+    if not note_ids or not isinstance(note_ids, list):
+        raise HTTPException(status_code=400, detail="请选择要导出的笔记")
+
+    notes = await db.get_notes_by_ids(note_ids)
+    if not notes:
+        raise HTTPException(status_code=404, detail="未找到选中的笔记")
+
+    # Build ZIP in memory
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        used_names = set()
+        for note in notes:
+            title = note.get("title", "untitled")
+            content = note.get("content") or ""
+            book_title = note.get("book_title") or "未知图书"
+            created_at = note.get("created_at", "")
+            is_ai = note.get("is_ai_generated", 0)
+
+            md_content = f"""# {title}
+
+> 所属图书：《{book_title}》
+> 创建时间：{created_at}
+> AI 生成：{'是' if is_ai else '否'}
+
+{content}
+"""
+            # Sanitize filename
+            safe_title = re.sub(r'[\\/:*?"<>|]', "_", title).strip()
+            if not safe_title:
+                safe_title = f"note_{note['id']}"
+            filename = f"{safe_title}.md"
+
+            # Handle duplicate filenames in the same zip
+            counter = 1
+            original = filename
+            while filename in used_names:
+                stem = Path(original).stem
+                filename = f"{stem}_{counter}.md"
+                counter += 1
+            used_names.add(filename)
+
+            # Use ZipInfo with UTF-8 flag for Chinese filenames
+            info = zipfile.ZipInfo(filename=filename)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.flag_bits |= 0x800  # UTF-8 filename
+            zf.writestr(info, md_content.encode("utf-8"))
+
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="notes_export.zip"'}
+    )
 
 
 @app.post("/api/notes/ai-generate")
