@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# 用户数据（由 Docker volume 管理）
+data/
+bookmanager.db
+.bookmanager_config.json
+books/
+static/covers/
+
+# 测试文件
+tmp/
+*.log

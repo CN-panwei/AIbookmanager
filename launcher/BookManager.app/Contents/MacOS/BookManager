@@ -1,0 +1,14 @@
+#!/bin/bash
+# BookManager macOS Launcher
+# 自动定位到项目目录并启动
+
+PROJECT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$PROJECT_DIR"
+
+# 如果项目目录下有 start.sh，用它启动
+if [ -f "$PROJECT_DIR/start.sh" ]; then
+    exec "$PROJECT_DIR/start.sh"
+else
+    osascript -e 'display dialog "未找到 start.sh，请将此 app 放在项目根目录旁。" buttons {"确定"} default button 1'
+    exit 1
+fi

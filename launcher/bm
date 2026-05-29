@@ -1,0 +1,14 @@
+#!/bin/bash
+# BookManager 命令行快捷启动器
+# 用法：将 bm 文件复制到 /usr/local/bin/ 后，在任意目录输入 bm 即可启动
+
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_DIR"
+
+if [ -f "$PROJECT_DIR/start.sh" ]; then
+    exec "$PROJECT_DIR/start.sh"
+else
+    echo "❌ 错误：未找到 start.sh"
+    echo "请确保 bm 文件位于 BookManager 项目的 launcher/ 目录中"
+    exit 1
+fi

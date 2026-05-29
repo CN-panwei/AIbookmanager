@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  bookmanager:
+    build: .
+    container_name: bookmanager
+    ports:
+      - "8000:8000"
+    volumes:
+      # 所有用户数据持久化到 ./data/ 目录
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

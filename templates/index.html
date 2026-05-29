@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookManager - 本地图书管理</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Toast UI Editor -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/3.2.2/toastui-editor.min.css">
+    <script src="https://uicdn.toast.com/editor/3.2.2/toastui-editor-all.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>📚 BookManager</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-category="all" onclick="selectCategory(null)">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-label">全部图书</span>
+                </div>
+                <div class="nav-divider"></div>
+                <div id="category-list"></div>
+                <button class="btn-add-category" onclick="showNewCategoryModal()">
+                    <span>+</span> 新建分类
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <header class="top-bar">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="搜索书名、作者..." oninput="handleSearch()">
+                </div>
+                <div class="top-actions">
+                    <button class="btn-icon" onclick="showUploadModal()" title="上传图书">📤</button>
+                    <button class="btn-icon" onclick="showSettingsModal()" title="设置">⚙️</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="section-header">
+                    <h2 id="section-title">全部图书</h2>
+                    <span id="book-count" class="count-badge">0 本</span>
+                </div>
+                <div id="book-grid" class="book-grid"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Book Detail Modal -->
+    <div id="book-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-large">
+            <button class="modal-close" onclick="closeBookModal()">&times;</button>
+            <div class="book-detail">
+                <div class="book-detail-left">
+                    <img id="detail-cover" src="" alt="封面" class="detail-cover">
+                    <div class="detail-meta">
+                        <h3 id="detail-title"></h3>
+                        <p id="detail-author" class="detail-author"></p>
+                        <div class="detail-info">
+                            <span id="detail-format" class="badge"></span>
+                            <span id="detail-pages"></span>
+                        </div>
+                        <div class="detail-actions">
+                            <button class="btn-primary" onclick="generateSummary()">✨ 生成简介</button>
+                            <button class="btn-secondary" onclick="deleteBook()">🗑️ 删除</button>
+                        </div>
+                    </div>
+                    <div class="detail-description">
+                        <h4>简介</h4>
+                        <p id="detail-desc">暂无简介</p>
+                    </div>
+                </div>
+                <div class="book-detail-right">
+                    <div class="notes-header" id="notes-header">
+                        <h4>📝 笔记</h4>
+                        <div class="notes-header-actions">
+                            <button class="btn-small" onclick="toggleBatchMode()">批量管理</button>
+                            <button class="btn-small" onclick="showNoteEditor()">+ 新建笔记</button>
+                        </div>
+                    </div>
+                    <div id="notes-list" class="notes-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Note Editor Modal -->
+    <div id="note-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-medium">
+            <button class="modal-close" onclick="closeNoteModal()">&times;</button>
+            <div class="note-editor-header">
+                <input type="text" id="note-title-input" placeholder="笔记标题" class="note-title-input" autocomplete="off">
+                <div class="note-actions">
+                    <button class="btn-ai" onclick="showAIPrompt()">🤖 AI 生成</button>
+                    <button class="btn-primary" onclick="saveNote()">保存</button>
+                </div>
+            </div>
+            <div id="editor-container"></div>
+        </div>
+    </div>
+
+    <!-- AI Prompt Modal -->
+    <div id="ai-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <button class="modal-close" onclick="closeAIModal()">&times;</button>
+            <h4>🤖 AI 生成笔记</h4>
+            <p class="hint">输入提示词，AI 将根据书籍内容生成笔记</p>
+            <textarea id="ai-prompt-input" placeholder="例如：总结本书的核心观点、梳理主要人物关系、分析作者的论证逻辑..." rows="4"></textarea>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeAIModal()">取消</button>
+                <button class="btn-primary" onclick="generateNote()">生成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="upload-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+            <h4>📤 上传图书</h4>
+            <div class="form-group">
+                <label>选择分类</label>
+                <select id="upload-category"></select>
+            </div>
+            <div class="form-group">
+                <label>选择文件（PDF / EPUB）</label>
+                <input type="file" id="upload-file" accept=".pdf,.epub">
+            </div>
+            <div id="upload-dropzone" class="dropzone"
+                 ondragover="event.preventDefault();this.classList.add('active')"
+                 ondragleave="this.classList.remove('active')"
+                 ondrop="handleDrop(event)">
+                <p>📁 拖拽文件到此处上传</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeUploadModal()">取消</button>
+                <button class="btn-primary" onclick="uploadBook()">上传</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Category Modal -->
+    <div id="category-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
+            <h4>📁 新建分类</h4>
+            <input type="text" id="new-category-name" placeholder="分类名称">
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeCategoryModal()">取消</button>
+                <button class="btn-primary" onclick="createCategory()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+            <h4>⚙️ 设置</h4>
+            <div class="form-group">
+                <label>DeepSeek API Key</label>
+                <input type="password" id="setting-api-key" placeholder="sk-...">
+            </div>
+            <div class="form-group">
+                <label>API Base URL（可选）</label>
+                <input type="text" id="setting-base-url" placeholder="https://api.deepseek.com/v1">
+            </div>
+            <div class="form-group">
+                <label>模型（可选）</label>
+                <input type="text" id="setting-model" placeholder="deepseek-chat">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="testAPIKey()">测试连接</button>
+                <button class="btn-primary" onclick="saveSettings()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
