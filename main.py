@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional, List
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from contextlib import asynccontextmanager
@@ -181,10 +181,22 @@ async def list_books(category_id: Optional[int] = None, search: Optional[str] = 
 
 
 @app.post("/api/books/upload")
-async def upload_book(
-    file: UploadFile = File(...),
-    category_id: int = Form(...)
-):
+async def upload_book(request: Request):
+    # Manually parse multipart form for better cross-platform compatibility
+    form = await request.form()
+    file = form.get("file")
+    category_id_raw = form.get("category_id")
+
+    if not file:
+        raise HTTPException(status_code=400, detail="未上传文件")
+    if not category_id_raw:
+        raise HTTPException(status_code=400, detail="未选择分类")
+
+    try:
+        category_id = int(category_id_raw)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="分类 ID 格式错误")
+
     cat = await db.get_category_by_id(category_id)
     if not cat:
         raise HTTPException(status_code=404, detail="分类不存在")
