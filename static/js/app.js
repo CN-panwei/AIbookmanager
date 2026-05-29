@@ -50,6 +50,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (e) {
         // ignore
     }
+    // Heartbeat: keep server alive while page is open
+    setInterval(() => {
+        fetch("/api/ping").catch(() => {});
+    }, 10000);
 });
 
 // ===== Categories =====
@@ -59,16 +63,31 @@ async function loadCategories() {
     populateUploadCategories();
 }
 
+function getCategoryBookCount(catId) {
+    return state.books.filter(b => b.category_id === catId).length;
+}
+
 function renderCategories() {
+    // Update "All" count
+    const allCountEl = document.getElementById("nav-count-all");
+    if (allCountEl) allCountEl.textContent = state.books.length;
+
     const container = document.getElementById("category-list");
-    container.innerHTML = state.categories.map(cat => `
-        <div class="nav-item ${state.currentCategory === cat.id ? 'active' : ''}"
-             data-category="${cat.id}"
-             onclick="selectCategory(${cat.id})">
-            <img src="/static/icon/folder.svg" class="nav-icon" alt="">
-            <span class="nav-label">${escapeHtml(cat.name)}</span>
-        </div>
-    `).join("");
+    container.innerHTML = state.categories.map(cat => {
+        const count = getCategoryBookCount(cat.id);
+        return `
+            <div class="nav-item ${state.currentCategory === cat.id ? 'active' : ''}"
+                 data-category="${cat.id}"
+                 onclick="selectCategory(${cat.id})"
+                 ondragover="onCategoryDragOver(event, ${cat.id})"
+                 ondragleave="onCategoryDragLeave(event, ${cat.id})"
+                 ondrop="onCategoryDrop(event, ${cat.id})">
+                <img src="/static/icon/folder.svg" class="nav-icon" alt="">
+                <span class="nav-label">${escapeHtml(cat.name)}</span>
+                <span class="nav-count">${count}</span>
+            </div>
+        `;
+    }).join("");
 }
 
 function selectCategory(catId) {
@@ -81,6 +100,71 @@ function selectCategory(catId) {
     const title = catId === null ? "全部图书" : state.categories.find(c => c.id === catId)?.name || "图书";
     document.getElementById("section-title").textContent = title;
     loadBooks();
+}
+
+// ===== Drag & Drop: Move book to category =====
+let _draggingBookId = null;
+
+function onBookDragStart(ev, bookId) {
+    _draggingBookId = bookId;
+    ev.dataTransfer.effectAllowed = "move";
+    ev.target.classList.add("dragging");
+    document.querySelector(".sidebar").classList.add("drag-active");
+}
+
+function onBookDragEnd(ev) {
+    _draggingBookId = null;
+    ev.target.classList.remove("dragging");
+    document.querySelector(".sidebar").classList.remove("drag-active");
+    document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("drag-over"));
+}
+
+function onCategoryDragOver(ev, catId) {
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "move";
+    const el = ev.currentTarget;
+    if (!el.classList.contains("drag-over")) {
+        document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("drag-over"));
+        el.classList.add("drag-over");
+    }
+}
+
+function onCategoryDragLeave(ev, catId) {
+    ev.currentTarget.classList.remove("drag-over");
+}
+
+async function onCategoryDrop(ev, catId) {
+    ev.preventDefault();
+    ev.currentTarget.classList.remove("drag-over");
+    document.querySelector(".sidebar").classList.remove("drag-active");
+    if (!_draggingBookId) return;
+
+    const bookId = _draggingBookId;
+    const book = state.books.find(b => b.id === bookId);
+    if (!book) return;
+
+    // If dropped on same category, do nothing
+    if (book.category_id === catId) return;
+
+    const cat = state.categories.find(c => c.id === catId);
+    const catName = cat ? cat.name : "新分类";
+
+    try {
+        const formData = new FormData();
+        formData.append("category_id", catId);
+        const resp = await fetch(`/api/books/${bookId}/category`, {
+            method: "PUT",
+            body: formData,
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.detail || "移动失败");
+        }
+        showToast(`已移动到「${catName}」`, "success");
+        await loadBooks();
+    } catch (e) {
+        showToast(e.message, "error");
+    }
 }
 
 async function createCategory() {
@@ -107,6 +191,7 @@ async function loadBooks() {
     if (state.searchQuery) url.searchParams.set("search", state.searchQuery);
     state.books = await api(url.toString());
     renderBooks();
+    renderCategories(); // refresh category counts
 }
 
 function renderBooks() {
@@ -124,7 +209,10 @@ function renderBooks() {
     }
 
     grid.innerHTML = state.books.map(book => `
-        <div class="book-card" onclick="openBookDetail(${book.id})">
+        <div class="book-card" draggable="true"
+             ondragstart="onBookDragStart(event, ${book.id})"
+             ondragend="onBookDragEnd(event)"
+             onclick="openBookDetail(${book.id})">
             <img class="book-cover" src="/static/${book.cover_path || 'covers/default.jpg'}" alt="${escapeHtml(book.title)}">
             <div class="book-info">
                 <div class="book-title">${escapeHtml(book.title)}</div>
@@ -157,7 +245,16 @@ async function openBookDetail(bookId) {
 function renderBookDetail() {
     const book = state.currentBook;
     if (!book) return;
-    document.getElementById("detail-cover").src = `/static/${book.cover_path || 'covers/default.jpg'}`;
+    const coverImg = document.getElementById("detail-cover");
+    coverImg.src = `/static/${book.cover_path || 'covers/default.jpg'}`;
+    coverImg.title = "点击用系统程序打开书籍";
+    coverImg.onclick = async () => {
+        try {
+            await api(`/api/books/${book.id}/open`, { method: "POST" });
+        } catch (e) {
+            showToast(e.message, "error");
+        }
+    };
     document.getElementById("detail-title").textContent = book.title;
     document.getElementById("detail-author").textContent = book.author || "未知作者";
     document.getElementById("detail-format").textContent = book.file_format?.toUpperCase() || "";
@@ -252,14 +349,30 @@ async function deleteBook() {
 }
 
 // ===== Upload =====
+let pendingUploadFiles = [];
+
 function showUploadModal() {
     populateUploadCategories();
+    pendingUploadFiles = [];
+    renderUploadFileList();
+    resetUploadUI();
     document.getElementById("upload-modal").classList.add("active");
 }
 
 function closeUploadModal() {
     document.getElementById("upload-modal").classList.remove("active");
     document.getElementById("upload-file").value = "";
+    pendingUploadFiles = [];
+    renderUploadFileList();
+    resetUploadUI();
+}
+
+function resetUploadUI() {
+    document.getElementById("upload-progress").style.display = "none";
+    document.getElementById("upload-result").style.display = "none";
+    document.getElementById("upload-result").className = "upload-result";
+    document.getElementById("upload-btn").disabled = false;
+    document.getElementById("upload-btn").textContent = "上传";
 }
 
 function populateUploadCategories() {
@@ -269,38 +382,168 @@ function populateUploadCategories() {
     ).join("");
 }
 
+function onFilesSelected() {
+    const input = document.getElementById("upload-file");
+    addFilesToPending(input.files);
+    input.value = "";
+}
+
+function addFilesToPending(fileList) {
+    for (const file of fileList) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'pdf' || ext === 'epub') {
+            // avoid duplicates by name+size
+            const exists = pendingUploadFiles.some(f => f.name === file.name && f.size === file.size);
+            if (!exists) {
+                pendingUploadFiles.push(file);
+            }
+        }
+    }
+    renderUploadFileList();
+}
+
+function renderUploadFileList() {
+    const container = document.getElementById("upload-file-list");
+    if (!container) return;
+    if (pendingUploadFiles.length === 0) {
+        container.innerHTML = "";
+        document.getElementById("upload-btn").textContent = "上传";
+        return;
+    }
+    container.innerHTML = pendingUploadFiles.map((file, idx) => {
+        const ext = file.name.split('.').pop().toUpperCase();
+        return `
+            <div class="upload-file-item">
+                <span class="file-name">${escapeHtml(file.name)}</span>
+                <span class="file-meta">${ext} · ${formatSize(file.size)}</span>
+                <button class="file-remove" onclick="removeUploadFile(${idx})" title="移除">×</button>
+            </div>
+        `;
+    }).join("");
+    document.getElementById("upload-btn").textContent = `上传 (${pendingUploadFiles.length})`;
+}
+
+function removeUploadFile(index) {
+    pendingUploadFiles.splice(index, 1);
+    renderUploadFileList();
+}
+
 function handleDrop(ev) {
     ev.preventDefault();
     ev.currentTarget.classList.remove("active");
-    const files = ev.dataTransfer.files;
-    if (files.length > 0) {
-        document.getElementById("upload-file").files = files;
+    if (ev.dataTransfer.files.length > 0) {
+        addFilesToPending(ev.dataTransfer.files);
     }
 }
 
-async function uploadBook() {
-    const fileInput = document.getElementById("upload-file");
-    const categoryId = document.getElementById("upload-category").value;
-    if (!fileInput.files.length) return showToast("请选择文件", "error");
-
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
-    formData.append("category_id", categoryId);
-
-    try {
-        const resp = await fetch("/api/books/upload", {
-            method: "POST",
-            body: formData,
+function findDuplicateFiles(files) {
+    const duplicates = [];
+    const newFiles = [];
+    for (const file of files) {
+        const stem = file.name.replace(/\.[^/.]+$/, "").trim();
+        const isDup = state.books.some(b => {
+            const bookFileName = b.file_path ? b.file_path.split('/').pop().replace(/\.[^/.]+$/, "").trim() : "";
+            const bookTitle = (b.title || "").trim();
+            return bookFileName === stem || bookTitle === stem;
         });
-        if (!resp.ok) {
-            const err = await resp.json().catch(() => ({}));
-            throw new Error(err.detail || "上传失败");
+        if (isDup) {
+            duplicates.push(file);
+        } else {
+            newFiles.push(file);
         }
-        showToast("上传成功", "success");
-        closeUploadModal();
+    }
+    return { duplicates, newFiles };
+}
+
+async function uploadBooks() {
+    const categoryId = document.getElementById("upload-category").value;
+    if (pendingUploadFiles.length === 0) return showToast("请选择文件", "error");
+
+    // Check duplicates — not allowed to upload duplicates
+    const { duplicates, newFiles } = findDuplicateFiles(pendingUploadFiles);
+    if (duplicates.length > 0) {
+        const dupNames = duplicates.map(f => f.name).join("\n");
+        const ok = confirm(`检测到 ${duplicates.length} 本图书已存在：\n\n${dupNames}\n\n点击「确定」跳过重复文件只上传新书，点击「取消」取消本次上传。`);
+        if (!ok) {
+            return; // Cancel entire upload
+        }
+        // Skip duplicates, only upload new files
+        pendingUploadFiles = newFiles;
+        renderUploadFileList();
+        if (pendingUploadFiles.length === 0) {
+            return showToast("没有新文件需要上传", "info");
+        }
+    }
+
+    const btn = document.getElementById("upload-btn");
+    btn.disabled = true;
+    btn.textContent = "上传中...";
+
+    const progressEl = document.getElementById("upload-progress");
+    const progressFill = document.getElementById("progress-fill");
+    const progressText = document.getElementById("progress-text");
+    const resultEl = document.getElementById("upload-result");
+
+    progressEl.style.display = "block";
+    resultEl.style.display = "none";
+
+    let successCount = 0;
+    let failCount = 0;
+    const failedNames = [];
+
+    for (let i = 0; i < pendingUploadFiles.length; i++) {
+        const file = pendingUploadFiles[i];
+        const pct = Math.round(((i) / pendingUploadFiles.length) * 100);
+        progressFill.style.width = pct + "%";
+        progressText.textContent = `正在上传第 ${i + 1}/${pendingUploadFiles.length} 个：${file.name}`;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("category_id", categoryId);
+
+        try {
+            const resp = await fetch("/api/books/upload", {
+                method: "POST",
+                body: formData,
+            });
+            if (resp.ok) {
+                successCount++;
+            } else {
+                const err = await resp.json().catch(() => ({}));
+                failCount++;
+                failedNames.push(file.name + (err.detail ? ` (${err.detail})` : ""));
+            }
+        } catch (e) {
+            failCount++;
+            failedNames.push(file.name + " (网络错误)");
+        }
+    }
+
+    progressFill.style.width = "100%";
+    progressText.textContent = `上传完成：成功 ${successCount} 个，失败 ${failCount} 个`;
+
+    resultEl.style.display = "block";
+    if (failCount === 0) {
+        resultEl.className = "upload-result success";
+        resultEl.textContent = `✓ 全部上传成功！共 ${successCount} 本图书。`;
+    } else if (successCount === 0) {
+        resultEl.className = "upload-result error";
+        resultEl.textContent = `✗ 全部上传失败。${failedNames.slice(0, 3).join("；")}${failedNames.length > 3 ? " 等" : ""}`;
+    } else {
+        resultEl.className = "upload-result partial";
+        resultEl.textContent = `部分成功：${successCount} 本成功，${failCount} 本失败。${failedNames.slice(0, 2).join("；")}${failedNames.length > 2 ? " 等" : ""}`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = "上传";
+
+    if (successCount > 0) {
+        showToast(`成功上传 ${successCount} 本图书`, "success");
         await loadBooks();
-    } catch (e) {
-        showToast(e.message, "error");
+        // Reset to initial state after successful upload
+        pendingUploadFiles = [];
+        renderUploadFileList();
+        resetUploadUI();
     }
 }
 

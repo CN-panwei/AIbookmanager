@@ -36,12 +36,17 @@ fi
 # 激活虚拟环境
 source venv/bin/activate
 
-# 安装依赖
-echo "→ 安装依赖..."
-pip install -q --upgrade pip
-pip install -q -r requirements.txt
-
-echo "✓ 依赖就绪"
+# 安装依赖（只在初次或 requirements.txt 更新时执行）
+MARKER="venv/.deps_installed"
+if [ ! -f "$MARKER" ] || [ "requirements.txt" -nt "$MARKER" ]; then
+    echo "→ 安装依赖..."
+    pip install -q --upgrade pip
+    pip install -q -r requirements.txt
+    touch "$MARKER"
+    echo "✓ 依赖安装完成"
+else
+    echo "✓ 依赖已是最新，跳过安装"
+fi
 
 # 检测端口占用，自动寻找可用端口
 BASE_PORT=8000

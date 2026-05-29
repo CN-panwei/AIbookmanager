@@ -83,3 +83,19 @@ def delete_category_folder(folder_name: str, delete_books: bool = False):
             # 如果文件夹内有文件且不移除书籍，则保留文件夹
             if not any(folder.iterdir()):
                 folder.rmdir()
+
+
+def move_book_to_new_category(file_path: str, new_folder_name: str) -> str:
+    """将图书文件移动到新的分类文件夹，返回新的相对路径"""
+    root = get_books_root()
+    old_full = root / file_path
+    if not old_full.exists():
+        return file_path
+
+    new_folder = ensure_category_folder(new_folder_name)
+    filename = old_full.name
+    unique_name = get_unique_filename(new_folder, filename)
+    new_full = new_folder / unique_name
+
+    os.replace(str(old_full), str(new_full))
+    return str(new_full.relative_to(root))

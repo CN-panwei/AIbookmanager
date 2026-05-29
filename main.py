@@ -1,5 +1,10 @@
 import os
 import shutil
+import asyncio
+import time
+import signal
+import subprocess
+import platform
 from pathlib import Path
 from typing import Optional, List
 
@@ -13,16 +18,39 @@ from config import ConfigManager
 from services.file_service import (
     to_pinyin_folder_name, move_book_to_category, delete_book_file,
     rename_category_folder, delete_category_folder, get_books_root,
-    ensure_category_folder
+    ensure_category_folder, move_book_to_new_category
 )
 from services.book_parser import parse_book, save_cover_image, get_default_cover_path
 from services.ai_service import generate_summary, generate_note, test_api_key
 
 
+# Global heartbeat state
+_last_ping_time = time.time()
+_HEARTBEAT_TIMEOUT = 30  # seconds without ping before auto-exit
+_HEARTBEAT_CHECK_INTERVAL = 15  # seconds between checks
+
+
+async def _heartbeat_checker():
+    """Background task: exit if no ping received for a while."""
+    while True:
+        await asyncio.sleep(_HEARTBEAT_CHECK_INTERVAL)
+        if time.time() - _last_ping_time > _HEARTBEAT_TIMEOUT:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.init_db()
-    yield
+    # Start heartbeat checker in background
+    task = asyncio.create_task(_heartbeat_checker())
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="BookManager", lifespan=lifespan)
@@ -39,6 +67,13 @@ async def index():
 
 
 # ========== Categories ==========
+
+@app.get("/api/ping")
+async def ping():
+    global _last_ping_time
+    _last_ping_time = time.time()
+    return {"ok": True}
+
 
 @app.get("/api/categories")
 async def list_categories():
@@ -204,6 +239,51 @@ async def get_book(book_id: int):
     if not book:
         raise HTTPException(status_code=404, detail="图书不存在")
     return book
+
+
+@app.put("/api/books/{book_id}/category")
+async def update_book_category(book_id: int, category_id: int = Form(...)):
+    book = await db.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="图书不存在")
+
+    cat = await db.get_category_by_id(category_id)
+    if not cat:
+        raise HTTPException(status_code=404, detail="分类不存在")
+
+    # Move file to new category folder
+    new_rel_path = move_book_to_new_category(book["file_path"], cat["folder_name"])
+
+    # Update database
+    await db.update_book(book_id, category_id=category_id, file_path=new_rel_path)
+
+    return {"success": True, "new_category_id": category_id}
+
+
+@app.post("/api/books/{book_id}/open")
+async def open_book_with_system(book_id: int):
+    book = await db.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="图书不存在")
+
+    file_path = get_books_root() / book["file_path"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="图书文件不存在")
+
+    full_path = str(file_path.resolve())
+    system = platform.system()
+
+    try:
+        if system == "Darwin":
+            subprocess.Popen(["open", full_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        elif system == "Windows":
+            subprocess.Popen(["start", "", full_path], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(["xdg-open", full_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"无法打开文件: {str(e)}")
+
+    return {"success": True}
 
 
 @app.delete("/api/books/{book_id}")

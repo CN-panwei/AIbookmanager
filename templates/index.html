@@ -20,6 +20,7 @@
                 <div class="nav-item active" data-category="all" onclick="selectCategory(null)">
                     <img src="/static/icon/home.svg" class="nav-icon" alt="">
                     <span class="nav-label">全部图书</span>
+                    <span class="nav-count" id="nav-count-all"></span>
                 </div>
                 <div class="nav-divider"></div>
                 <div id="category-list"></div>
@@ -139,26 +140,32 @@
     <!-- Upload Modal -->
     <div id="upload-modal" class="modal">
         <div class="modal-overlay"></div>
-        <div class="modal-content modal-small">
+        <div class="modal-content modal-upload">
             <button class="modal-close" onclick="closeUploadModal()">&times;</button>
-            <h4><img src="/static/icon/upload.svg" class="icon-svg title" alt="">上传图书</h4>
+            <h4><img src="/static/icon/upload.svg" class="icon-svg title" alt="">批量上传图书</h4>
             <div class="form-group">
                 <label>选择分类</label>
                 <select id="upload-category"></select>
             </div>
             <div class="form-group">
-                <label>选择文件（PDF / EPUB）</label>
-                <input type="file" id="upload-file" accept=".pdf,.epub">
+                <label>选择文件（可多选 PDF / EPUB）</label>
+                <input type="file" id="upload-file" accept=".pdf,.epub" multiple onchange="onFilesSelected()">
             </div>
+            <div id="upload-file-list" class="upload-file-list"></div>
             <div id="upload-dropzone" class="dropzone"
                  ondragover="event.preventDefault();this.classList.add('active')"
                  ondragleave="this.classList.remove('active')"
                  ondrop="handleDrop(event)">
                 <p><img src="/static/icon/folder-open.svg" class="icon-svg title" alt="">拖拽文件到此处上传</p>
             </div>
+            <div id="upload-progress" class="upload-progress" style="display:none;">
+                <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+                <span id="progress-text" class="progress-text"></span>
+            </div>
+            <div id="upload-result" class="upload-result" style="display:none;"></div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeUploadModal()">取消</button>
-                <button class="btn-primary" onclick="uploadBook()">上传</button>
+                <button class="btn-primary" id="upload-btn" onclick="uploadBooks()">上传</button>
             </div>
         </div>
     </div>
@@ -166,7 +173,7 @@
     <!-- New Category Modal -->
     <div id="category-modal" class="modal">
         <div class="modal-overlay"></div>
-        <div class="modal-content modal-small">
+        <div class="modal-content modal-category">
             <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
             <h4><img src="/static/icon/folder.svg" class="icon-svg title" alt="">新建分类</h4>
             <input type="text" id="new-category-name" placeholder="分类名称">
