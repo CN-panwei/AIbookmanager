@@ -8,14 +8,27 @@ cd "$PROJECT_DIR"
 echo "📚 BookManager 启动器"
 echo "====================="
 
-# 自动备份配置文件和数据库（不备份书籍原文件以节省空间）
+# 自动备份配置文件和数据库（带时间戳，保留最近 10 个版本）
 BACKUP_DIR="$PROJECT_DIR/.backup"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+
 if [ -f "$PROJECT_DIR/bookmanager.db" ] || [ -f "$PROJECT_DIR/.bookmanager_config.json" ]; then
     mkdir -p "$BACKUP_DIR"
-    cp "$PROJECT_DIR/bookmanager.db" "$BACKUP_DIR/" 2>/dev/null
-    cp "$PROJECT_DIR/.bookmanager_config.json" "$BACKUP_DIR/" 2>/dev/null
+    
+    # 备份数据库和配置（带时间戳）
+    if [ -f "$PROJECT_DIR/bookmanager.db" ]; then
+        cp "$PROJECT_DIR/bookmanager.db" "$BACKUP_DIR/bookmanager_${TIMESTAMP}.db"
+    fi
+    if [ -f "$PROJECT_DIR/.bookmanager_config.json" ]; then
+        cp "$PROJECT_DIR/.bookmanager_config.json" "$BACKUP_DIR/.bookmanager_config_${TIMESTAMP}.json"
+    fi
     cp -r "$PROJECT_DIR/static/covers" "$BACKUP_DIR/" 2>/dev/null
-    echo "✓ 配置与数据已自动备份到 .backup/ 目录（不含书籍原文件）"
+    
+    # 清理旧备份，保留最近 10 个版本
+    ls -t "$BACKUP_DIR"/bookmanager_*.db 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null
+    ls -t "$BACKUP_DIR"/.bookmanager_config_*.json 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null
+    
+    echo "✓ 配置与数据已自动备份到 .backup/ 目录（保留最近 10 个版本）"
 fi
 
 # 检查 Python

@@ -21,6 +21,26 @@ if not exist "venv\" (
 
 call venv\Scripts\activate.bat
 
+REM Auto-backup database and config with timestamp (keep last 10)
+python -c "
+import shutil, os, glob
+from datetime import datetime
+bd = '.backup'
+os.makedirs(bd, exist_ok=True)
+ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+if os.path.exists('bookmanager.db'):
+    shutil.copy('bookmanager.db', os.path.join(bd, f'bookmanager_{ts}.db'))
+if os.path.exists('.bookmanager_config.json'):
+    shutil.copy('.bookmanager_config.json', os.path.join(bd, f'.bookmanager_config_{ts}.json'))
+if os.path.exists('static/covers'):
+    shutil.copytree('static/covers', os.path.join(bd, 'covers'), dirs_exist_ok=True)
+for pattern in [os.path.join(bd, 'bookmanager_*.db'), os.path.join(bd, '.bookmanager_config_*.json')]:
+    files = sorted(glob.glob(pattern), key=os.path.getmtime)
+    for old in files[:-10]:
+        os.remove(old)
+print('Backup done.')
+"
+
 if not exist "venv\.deps_installed" (
     echo Installing dependencies...
     pip install -q --upgrade pip
