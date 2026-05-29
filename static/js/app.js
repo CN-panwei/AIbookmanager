@@ -522,7 +522,15 @@ async function uploadBooks() {
             } else {
                 const err = await resp.json().catch(() => ({}));
                 failCount++;
-                failedNames.push(file.name + (err.detail ? ` (${err.detail})` : ""));
+                let errMsg = "";
+                if (err.detail) {
+                    errMsg = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
+                } else if (err.message) {
+                    errMsg = err.message;
+                } else {
+                    errMsg = `HTTP ${resp.status}`;
+                }
+                failedNames.push(file.name + (errMsg ? ` (${errMsg})` : ""));
             }
         } catch (e) {
             failCount++;

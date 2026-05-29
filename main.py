@@ -5,6 +5,7 @@ import time
 import signal
 import subprocess
 import platform
+import tempfile
 from pathlib import Path
 from typing import Optional, List
 
@@ -199,7 +200,7 @@ async def upload_book(
         raise HTTPException(status_code=400, detail="仅支持 PDF 和 EPUB 格式")
 
     # Save to temp location
-    temp_path = f"/tmp/{filename}"
+    temp_path = os.path.join(tempfile.gettempdir(), filename)
     with open(temp_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
