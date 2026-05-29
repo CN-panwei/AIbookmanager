@@ -54,25 +54,29 @@ body {
 }
 
 .sidebar-header {
-    padding: 24px 20px 20px;
+    padding: 20px;
+    text-align: center;
 }
 
-.sidebar-header h1 {
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    color: var(--text-primary);
+.sidebar-logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
 }
 
 .sidebar-nav {
     flex: 1;
     padding: 8px 0;
     overflow-y: auto;
+    text-align: center;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 10px 20px;
     margin: 0 10px;
     cursor: pointer;
@@ -80,6 +84,7 @@ body {
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
     font-size: 14px;
+    position: relative;
 }
 
 .nav-item:hover {
@@ -152,7 +157,8 @@ body {
     gap: 2px;
     opacity: 0;
     transition: opacity 0.15s;
-    margin-left: 4px;
+    position: absolute;
+    right: 8px;
 }
 
 .nav-item:hover .nav-actions {
@@ -191,10 +197,11 @@ body {
 }
 
 .btn-add-category {
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    margin: 8px 16px;
+    margin: 8px auto;
     padding: 8px 14px;
     background: transparent;
     border: 1px dashed var(--border);
