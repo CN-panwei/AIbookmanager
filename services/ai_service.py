@@ -16,6 +16,7 @@ async def generate_summary(text: str, max_tokens: int = 500) -> str:
     system_prompt = (
         "你是一位专业的书评人。请根据提供的书籍内容片段，"
         "生成一段 150-250 字的中文简介。语言简洁优美，突出书籍的核心主题与价值。"
+        "无论书籍原文是中文还是英文，请务必用中文输出。"
         "只返回简介正文，不要添加标题或其他说明。"
     )
 
@@ -59,6 +60,7 @@ async def generate_note(text: str, prompt: str, max_tokens: int = 2000) -> str:
         "你是一位专业的阅读助手。请根据提供的书籍内容和用户的要求，"
         "生成结构清晰、内容丰富的 Markdown 格式笔记。"
         "使用 Markdown 语法（标题、列表、引用等）组织内容。"
+        "无论书籍原文是中文还是英文，请务必用中文输出笔记内容。"
     )
 
     # 截断文本
