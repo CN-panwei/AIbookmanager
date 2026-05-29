@@ -9,7 +9,6 @@ mkdir -p "$BACKUP_DIR"
 
 cp "$PROJECT_DIR/bookmanager.db" "$BACKUP_DIR/" 2>/dev/null
 cp "$PROJECT_DIR/.bookmanager_config.json" "$BACKUP_DIR/" 2>/dev/null
-cp -r "$PROJECT_DIR/books" "$BACKUP_DIR/" 2>/dev/null
 cp -r "$PROJECT_DIR/static/covers" "$BACKUP_DIR/" 2>/dev/null
 
-echo "✓ 数据已备份到: $BACKUP_DIR"
+echo "✓ 配置与数据已备份到: $BACKUP_DIR（不含书籍原文件）"

@@ -10,6 +10,7 @@ let state = {
     editor: null,
     batchMode: false,
     selectedNoteIds: new Set(),
+    prompts: [],
 };
 
 // ===== API =====
@@ -39,6 +40,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadCategories();
     await loadBooks();
     await loadSettings();
+    // Display app version
+    try {
+        const cfg = await api("/api/config");
+        const verEl = document.getElementById("app-version");
+        if (verEl && cfg.app_version) {
+            verEl.textContent = "v" + cfg.app_version;
+        }
+    } catch (e) {
+        // ignore
+    }
 });
 
 // ===== Categories =====
@@ -54,7 +65,7 @@ function renderCategories() {
         <div class="nav-item ${state.currentCategory === cat.id ? 'active' : ''}"
              data-category="${cat.id}"
              onclick="selectCategory(${cat.id})">
-            <span class="nav-icon">📁</span>
+            <img src="/static/icon/folder.svg" class="nav-icon" alt="">
             <span class="nav-label">${escapeHtml(cat.name)}</span>
         </div>
     `).join("");
@@ -105,8 +116,8 @@ function renderBooks() {
     if (state.books.length === 0) {
         grid.innerHTML = `
             <div class="empty-state" style="grid-column: 1 / -1;">
-                <p style="font-size: 32px;">📚</p>
-                <p>暂无图书，点击右上角 📤 上传</p>
+                <p><img src="/static/icon/folder-open.svg" class="icon-svg large" alt="" style="opacity:0.4;"></p>
+                <p>暂无图书，点击右上角上传按钮上传</p>
             </div>
         `;
         return;
@@ -158,7 +169,7 @@ function renderNotesHeader() {
     const header = document.getElementById("notes-header");
     if (state.batchMode) {
         header.innerHTML = `
-            <h4>📝 笔记 <span style="font-size:12px;color:var(--text-light);font-weight:400;">(已选 ${state.selectedNoteIds.size} 条)</span></h4>
+            <h4><img src="/static/icon/note.svg" class="icon-svg title" alt="">笔记 <span style="font-size:12px;color:var(--text-light);font-weight:400;">(已选 ${state.selectedNoteIds.size} 条)</span></h4>
             <div class="notes-header-actions">
                 <button class="btn-small" style="background:#fee2e2;color:#ef4444;" onclick="batchDeleteNotes()">删除选中</button>
                 <button class="btn-small" onclick="toggleBatchMode()">取消</button>
@@ -166,7 +177,7 @@ function renderNotesHeader() {
         `;
     } else {
         header.innerHTML = `
-            <h4>📝 笔记</h4>
+            <h4><img src="/static/icon/note.svg" class="icon-svg title" alt="">笔记</h4>
             <div class="notes-header-actions">
                 <button class="btn-small" onclick="toggleBatchMode()">批量管理</button>
                 <button class="btn-small" onclick="showNoteEditor()">+ 新建笔记</button>
@@ -187,7 +198,7 @@ function renderNotesList() {
             ? `<input type="checkbox" class="note-checkbox" ${checked} onchange="toggleNoteSelection(${note.id})" onclick="event.stopPropagation()">`
             : '';
         const deleteBtn = !state.batchMode
-            ? `<button class="note-delete-btn" onclick="event.stopPropagation(); deleteNote(${note.id})">🗑️</button>`
+            ? `<button class="note-delete-btn" onclick="event.stopPropagation(); deleteNote(${note.id})"><img src="/static/icon/trash.svg" style="width:14px;height:14px;vertical-align:middle;opacity:0.6;" alt=""></button>`
             : '';
         const clickAction = state.batchMode ? '' : `onclick="editNote(${note.id})"`;
         return `
@@ -494,13 +505,43 @@ async function saveNote() {
 }
 
 // ===== AI Generate =====
+async function loadAIPrompts() {
+    const cfg = await api("/api/config");
+    state.prompts = cfg.ai_prompts || [];
+}
+
 function showAIPrompt() {
-    document.getElementById("ai-modal").classList.add("active");
+    loadAIPrompts().then(() => {
+        const select = document.getElementById("ai-prompt-select");
+        select.innerHTML = '<option value="">-- 自定义提示词 --</option>';
+        state.prompts.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = p.name;
+            select.appendChild(opt);
+        });
+        document.getElementById("ai-modal").classList.add("active");
+    });
+}
+
+function onPromptSelect() {
+    const select = document.getElementById("ai-prompt-select");
+    const id = select.value;
+    const input = document.getElementById("ai-prompt-input");
+    if (!id) {
+        input.value = "";
+        return;
+    }
+    const prompt = state.prompts.find((p) => p.id === id);
+    if (prompt) {
+        input.value = prompt.content;
+    }
 }
 
 function closeAIModal() {
     document.getElementById("ai-modal").classList.remove("active");
     document.getElementById("ai-prompt-input").value = "";
+    document.getElementById("ai-prompt-select").value = "";
 }
 
 async function generateNote() {
@@ -539,9 +580,26 @@ async function loadSettings() {
     const cfg = await api("/api/config");
     document.getElementById("setting-base-url").value = cfg.deepseek_base_url || "";
     document.getElementById("setting-model").value = cfg.deepseek_model || "";
+    const apiKeyInput = document.getElementById("setting-api-key");
+    if (cfg.deepseek_api_key_set && cfg.deepseek_api_key) {
+        apiKeyInput.value = cfg.deepseek_api_key;
+        apiKeyInput.dataset.masked = "true";
+    } else {
+        apiKeyInput.value = "";
+        apiKeyInput.dataset.masked = "false";
+    }
+    // Load prompts
+    state.prompts = cfg.ai_prompts || [];
+    renderPromptsList();
+    // clear previous test result
+    const resultEl = document.getElementById("test-result");
+    resultEl.classList.remove("visible", "success", "error");
+    resultEl.innerHTML = "";
 }
 
 function showSettingsModal() {
+    loadSettings();
+    switchSettingsTab("api");
     document.getElementById("settings-modal").classList.add("active");
 }
 
@@ -549,8 +607,21 @@ function closeSettingsModal() {
     document.getElementById("settings-modal").classList.remove("active");
 }
 
-async function saveSettings() {
-    const apiKey = document.getElementById("setting-api-key").value.trim();
+function switchSettingsTab(tab) {
+    // Update tab styles
+    document.querySelectorAll(".settings-tab").forEach((el) => {
+        el.classList.toggle("active", el.dataset.tab === tab);
+    });
+    // Update panel visibility
+    document.querySelectorAll(".settings-panel").forEach((el) => {
+        el.classList.toggle("active", el.id === "tab-" + tab);
+    });
+}
+
+async function saveSettings(silent) {
+    const apiKeyInput = document.getElementById("setting-api-key");
+    const isMasked = apiKeyInput.dataset.masked === "true";
+    const apiKey = isMasked ? "" : apiKeyInput.value.trim();
     const baseUrl = document.getElementById("setting-base-url").value.trim();
     const model = document.getElementById("setting-model").value.trim();
 
@@ -559,16 +630,105 @@ async function saveSettings() {
     if (baseUrl) payload.deepseek_base_url = baseUrl;
     if (model) payload.deepseek_model = model;
 
+    // Collect prompts from DOM
+    const promptItems = document.querySelectorAll("#prompts-list .prompt-item");
+    const prompts = [];
+    promptItems.forEach((item) => {
+        const id = item.dataset.id;
+        const name = item.querySelector(".prompt-name").value.trim();
+        const content = item.querySelector("textarea.prompt-content").value.trim();
+        if (name && content) {
+            prompts.push({ id, name, content });
+        }
+    });
+    payload.ai_prompts = prompts;
+
+    // If nothing changed at all
+    if (Object.keys(payload).length === 1 && payload.ai_prompts.length === 0 && !apiKey && !baseUrl && !model) {
+        if (!silent) {
+            showToast("没有需要保存的更改", "info");
+        }
+        return;
+    }
+
     try {
-        await api("/api/config", {
+        const cfg = await api("/api/config", {
             method: "POST",
             body: JSON.stringify(payload),
         });
-        showToast("设置已保存", "success");
-        closeSettingsModal();
-        document.getElementById("setting-api-key").value = "";
+        // Update input to show masked key after save
+        if (cfg.deepseek_api_key_set && cfg.deepseek_api_key) {
+            apiKeyInput.value = cfg.deepseek_api_key;
+            apiKeyInput.dataset.masked = "true";
+        }
+        state.prompts = cfg.ai_prompts || [];
+        if (!silent) {
+            showToast("设置已保存", "success");
+            closeSettingsModal();
+        }
     } catch (e) {
-        showToast(e.message, "error");
+        if (!silent) {
+            showToast(e.message, "error");
+        }
+        throw e;
+    }
+}
+
+function renderPromptsList() {
+    const container = document.getElementById("prompts-list");
+    if (!container) return;
+    container.innerHTML = "";
+    state.prompts.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "prompt-item";
+        div.dataset.id = p.id;
+        div.innerHTML = `
+            <div class="prompt-item-header">
+                <input type="text" class="prompt-name" value="${escapeHtml(p.name)}" placeholder="提示词名称" onchange="updatePrompt('${p.id}', 'name', this.value)">
+                <div class="prompt-actions">
+                    <button onclick="deletePrompt('${p.id}')" title="删除">删除</button>
+                </div>
+            </div>
+            <textarea class="prompt-content" placeholder="在此输入提示词正文..." onchange="updatePrompt('${p.id}', 'content', this.value)">${escapeHtml(p.content)}</textarea>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function addNewPrompt() {
+    const id = Date.now().toString();
+    state.prompts.push({ id, name: "", content: "" });
+    renderPromptsList();
+    // Focus the new name input
+    const items = document.querySelectorAll("#prompts-list .prompt-item");
+    if (items.length > 0) {
+        const last = items[items.length - 1];
+        const nameInput = last.querySelector(".prompt-name");
+        if (nameInput) nameInput.focus();
+    }
+}
+
+function deletePrompt(id) {
+    state.prompts = state.prompts.filter((p) => p.id !== id);
+    renderPromptsList();
+}
+
+function updatePrompt(id, field, value) {
+    const p = state.prompts.find((x) => x.id === id);
+    if (p) {
+        p[field] = value;
+    }
+}
+
+function showTestResult(result) {
+    const el = document.getElementById("test-result");
+    el.classList.remove("success", "error", "visible");
+    if (result.valid) {
+        el.classList.add("success", "visible");
+        el.innerHTML = '✓ ' + (result.message || "连接成功");
+    } else {
+        el.classList.add("error", "visible");
+        el.innerHTML = '✗ ' + (result.message || "连接失败");
     }
 }
 
@@ -578,12 +738,15 @@ async function testAPIKey() {
     btn.textContent = "测试中...";
     btn.disabled = true;
     try {
-        // Save first to test
-        await saveSettings();
+        // If user typed a new key (not masked), save it first
+        const apiKeyInput = document.getElementById("setting-api-key");
+        if (apiKeyInput.dataset.masked !== "true" && apiKeyInput.value.trim()) {
+            await saveSettings(true); // silent save
+        }
         const result = await api("/api/config/test", { method: "POST" });
-        showToast(result.valid ? "API 连接成功" : "API 连接失败，请检查 Key", result.valid ? "success" : "error");
+        showTestResult(result);
     } catch (e) {
-        showToast("测试失败: " + e.message, "error");
+        showTestResult({ valid: false, message: "测试失败: " + e.message });
     } finally {
         btn.textContent = original;
         btn.disabled = false;

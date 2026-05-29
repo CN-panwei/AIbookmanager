@@ -330,6 +330,7 @@ async def update_config(data: dict):
     api_key = data.get("deepseek_api_key", "").strip()
     base_url = data.get("deepseek_base_url", "").strip()
     model = data.get("deepseek_model", "").strip()
+    prompts = data.get("ai_prompts")
 
     if api_key:
         ConfigManager.set("deepseek_api_key", api_key)
@@ -337,14 +338,33 @@ async def update_config(data: dict):
         ConfigManager.set("deepseek_base_url", base_url)
     if model:
         ConfigManager.set("deepseek_model", model)
+    if prompts is not None:
+        ConfigManager.set("ai_prompts", prompts)
 
     return ConfigManager.to_dict(hide_secrets=True)
 
 
 @app.post("/api/config/test")
 async def test_config():
-    ok = await test_api_key()
-    return {"valid": ok}
+    cfg = ConfigManager.load()
+    api_key = cfg.get("deepseek_api_key", "")
+    base_url = cfg.get("deepseek_base_url", "https://api.deepseek.com/v1")
+
+    if not api_key:
+        return {"valid": False, "message": "API Key 未配置"}
+
+    try:
+        ok = await test_api_key()
+        if ok:
+            return {"valid": True, "message": "连接成功"}
+        return {"valid": False, "message": "API 认证失败，请检查 Key 是否有效"}
+    except Exception as e:
+        err = str(e).lower()
+        if "timeout" in err or "timed out" in err:
+            return {"valid": False, "message": "连接超时，请检查网络或 Base URL"}
+        if "connection" in err or "connect" in err:
+            return {"valid": False, "message": "无法连接到 API 服务器，请检查网络或 Base URL"}
+        return {"valid": False, "message": f"测试失败: {str(e)[:80]}"}
 
 
 # Run

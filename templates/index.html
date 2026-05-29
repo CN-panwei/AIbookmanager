@@ -14,11 +14,11 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h1>📚 BookManager</h1>
+                <h1>BookManager</h1>
             </div>
             <nav class="sidebar-nav">
                 <div class="nav-item active" data-category="all" onclick="selectCategory(null)">
-                    <span class="nav-icon">🏠</span>
+                    <img src="/static/icon/home.svg" class="nav-icon" alt="">
                     <span class="nav-label">全部图书</span>
                 </div>
                 <div class="nav-divider"></div>
@@ -27,6 +27,13 @@
                     <span>+</span> 新建分类
                 </button>
             </nav>
+            <div class="sidebar-footer">
+                <a href="https://pettoai.cn" target="_blank" rel="noopener noreferrer" class="footer-logo-link">
+                    <img src="/static/images/logo.png" alt="PettoAI" class="footer-logo">
+                </a>
+                <a href="https://pettoai.cn" target="_blank" rel="noopener noreferrer" class="footer-url">PettoAi.cn</a>
+                <span class="footer-version" id="app-version"></span>
+            </div>
         </aside>
 
         <!-- Main Content -->
@@ -36,8 +43,8 @@
                     <input type="text" id="search-input" placeholder="搜索书名、作者..." oninput="handleSearch()">
                 </div>
                 <div class="top-actions">
-                    <button class="btn-icon" onclick="showUploadModal()" title="上传图书">📤</button>
-                    <button class="btn-icon" onclick="showSettingsModal()" title="设置">⚙️</button>
+                    <button class="btn-icon" onclick="showUploadModal()" title="上传图书"><img src="/static/icon/upload.svg" alt=""></button>
+                    <button class="btn-icon" onclick="showSettingsModal()" title="设置"><img src="/static/icon/setting.svg" alt=""></button>
                 </div>
             </header>
 
@@ -67,8 +74,8 @@
                             <span id="detail-pages"></span>
                         </div>
                         <div class="detail-actions">
-                            <button class="btn-primary" onclick="generateSummary()">✨ 生成简介</button>
-                            <button class="btn-secondary" onclick="deleteBook()">🗑️ 删除</button>
+                            <button class="btn-primary" onclick="generateSummary()"><img src="/static/icon/sparkle.svg" class="icon-svg" alt="">生成简介</button>
+                            <button class="btn-secondary" onclick="deleteBook()"><img src="/static/icon/trash.svg" class="icon-svg" alt="">删除</button>
                         </div>
                     </div>
                     <div class="detail-description">
@@ -78,7 +85,7 @@
                 </div>
                 <div class="book-detail-right">
                     <div class="notes-header" id="notes-header">
-                        <h4>📝 笔记</h4>
+                        <h4><img src="/static/icon/note.svg" class="icon-svg title" alt="">笔记</h4>
                         <div class="notes-header-actions">
                             <button class="btn-small" onclick="toggleBatchMode()">批量管理</button>
                             <button class="btn-small" onclick="showNoteEditor()">+ 新建笔记</button>
@@ -98,7 +105,7 @@
             <div class="note-editor-header">
                 <input type="text" id="note-title-input" placeholder="笔记标题" class="note-title-input" autocomplete="off">
                 <div class="note-actions">
-                    <button class="btn-ai" onclick="showAIPrompt()">🤖 AI 生成</button>
+                    <button class="btn-ai" onclick="showAIPrompt()"><img src="/static/icon/robot.svg" class="icon-svg" alt="">AI 生成</button>
                     <button class="btn-primary" onclick="saveNote()">保存</button>
                 </div>
             </div>
@@ -109,11 +116,19 @@
     <!-- AI Prompt Modal -->
     <div id="ai-modal" class="modal">
         <div class="modal-overlay"></div>
-        <div class="modal-content modal-small">
+        <div class="modal-content modal-ai">
             <button class="modal-close" onclick="closeAIModal()">&times;</button>
-            <h4>🤖 AI 生成笔记</h4>
-            <p class="hint">输入提示词，AI 将根据书籍内容生成笔记</p>
-            <textarea id="ai-prompt-input" placeholder="例如：总结本书的核心观点、梳理主要人物关系、分析作者的论证逻辑..." rows="4"></textarea>
+            <h4><img src="/static/icon/robot.svg" class="icon-svg title" alt="">AI 生成笔记</h4>
+            <div class="form-group">
+                <label>选择提示词</label>
+                <select id="ai-prompt-select" onchange="onPromptSelect()">
+                    <option value="">-- 自定义提示词 --</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1;display:flex;flex-direction:column;">
+                <label>提示词内容（可编辑）</label>
+                <textarea id="ai-prompt-input" placeholder="输入或选择提示词后在此编辑..." style="flex:1;min-height:120px;"></textarea>
+            </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeAIModal()">取消</button>
                 <button class="btn-primary" onclick="generateNote()">生成</button>
@@ -126,7 +141,7 @@
         <div class="modal-overlay"></div>
         <div class="modal-content modal-small">
             <button class="modal-close" onclick="closeUploadModal()">&times;</button>
-            <h4>📤 上传图书</h4>
+            <h4><img src="/static/icon/upload.svg" class="icon-svg title" alt="">上传图书</h4>
             <div class="form-group">
                 <label>选择分类</label>
                 <select id="upload-category"></select>
@@ -139,7 +154,7 @@
                  ondragover="event.preventDefault();this.classList.add('active')"
                  ondragleave="this.classList.remove('active')"
                  ondrop="handleDrop(event)">
-                <p>📁 拖拽文件到此处上传</p>
+                <p><img src="/static/icon/folder-open.svg" class="icon-svg title" alt="">拖拽文件到此处上传</p>
             </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeUploadModal()">取消</button>
@@ -153,7 +168,7 @@
         <div class="modal-overlay"></div>
         <div class="modal-content modal-small">
             <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
-            <h4>📁 新建分类</h4>
+            <h4><img src="/static/icon/folder.svg" class="icon-svg title" alt="">新建分类</h4>
             <input type="text" id="new-category-name" placeholder="分类名称">
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeCategoryModal()">取消</button>
@@ -165,24 +180,52 @@
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
         <div class="modal-overlay"></div>
-        <div class="modal-content modal-small">
+        <div class="modal-content modal-settings">
             <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
-            <h4>⚙️ 设置</h4>
-            <div class="form-group">
-                <label>DeepSeek API Key</label>
-                <input type="password" id="setting-api-key" placeholder="sk-...">
-            </div>
-            <div class="form-group">
-                <label>API Base URL（可选）</label>
-                <input type="text" id="setting-base-url" placeholder="https://api.deepseek.com/v1">
-            </div>
-            <div class="form-group">
-                <label>模型（可选）</label>
-                <input type="text" id="setting-model" placeholder="deepseek-chat">
-            </div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="testAPIKey()">测试连接</button>
-                <button class="btn-primary" onclick="saveSettings()">保存</button>
+            <div class="settings-layout">
+                <!-- 左侧标签 -->
+                <div class="settings-tabs">
+                    <div class="settings-tab active" data-tab="api" onclick="switchSettingsTab('api')">
+                        <span>API 设置</span>
+                    </div>
+                    <div class="settings-tab" data-tab="prompts" onclick="switchSettingsTab('prompts')">
+                        <span>自定义提示词</span>
+                    </div>
+                </div>
+                <!-- 右侧内容 -->
+                <div class="settings-body">
+                    <!-- API 设置面板 -->
+                    <div id="tab-api" class="settings-panel active">
+                        <h4>API 设置</h4>
+                        <div class="form-group">
+                            <label>DeepSeek API Key</label>
+                            <input type="text" id="setting-api-key" placeholder="sk-...">
+                        </div>
+                        <div class="form-group">
+                            <label>API Base URL（可选）</label>
+                            <input type="text" id="setting-base-url" placeholder="https://api.deepseek.com/v1">
+                        </div>
+                        <div class="form-group">
+                            <label>模型（可选）</label>
+                            <input type="text" id="setting-model" placeholder="deepseek-chat">
+                        </div>
+                        <div id="test-result" class="test-result"></div>
+                        <div class="modal-actions">
+                            <button class="btn-secondary" onclick="testAPIKey()">测试连接</button>
+                            <button class="btn-primary" onclick="saveSettings()">保存</button>
+                        </div>
+                    </div>
+                    <!-- 自定义提示词面板 -->
+                    <div id="tab-prompts" class="settings-panel">
+                        <h4>自定义提示词</h4>
+                        <p class="hint">在这里管理 AI 生成笔记时使用的提示词模板。</p>
+                        <div id="prompts-list" class="prompts-list"></div>
+                        <button class="btn-small" onclick="addNewPrompt()" style="margin-top:12px;">+ 新增提示词</button>
+                        <div class="modal-actions">
+                            <button class="btn-primary" onclick="saveSettings()">保存</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

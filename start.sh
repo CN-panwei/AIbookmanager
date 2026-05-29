@@ -8,15 +8,14 @@ cd "$PROJECT_DIR"
 echo "📚 BookManager 启动器"
 echo "====================="
 
-# 自动备份用户数据（如果存在）
+# 自动备份配置文件和数据库（不备份书籍原文件以节省空间）
 BACKUP_DIR="$PROJECT_DIR/.backup"
-if [ -f "$PROJECT_DIR/bookmanager.db" ] || [ -d "$PROJECT_DIR/books" ]; then
+if [ -f "$PROJECT_DIR/bookmanager.db" ] || [ -f "$PROJECT_DIR/.bookmanager_config.json" ]; then
     mkdir -p "$BACKUP_DIR"
     cp "$PROJECT_DIR/bookmanager.db" "$BACKUP_DIR/" 2>/dev/null
     cp "$PROJECT_DIR/.bookmanager_config.json" "$BACKUP_DIR/" 2>/dev/null
-    cp -r "$PROJECT_DIR/books" "$BACKUP_DIR/" 2>/dev/null
     cp -r "$PROJECT_DIR/static/covers" "$BACKUP_DIR/" 2>/dev/null
-    echo "✓ 数据已自动备份到 .backup/ 目录"
+    echo "✓ 配置与数据已自动备份到 .backup/ 目录（不含书籍原文件）"
 fi
 
 # 检查 Python
