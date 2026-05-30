@@ -2,6 +2,7 @@
 let state = {
     categories: [],
     books: [],
+    totalBookCount: 0,
     currentCategory: null,
     searchQuery: "",
     currentBook: null,
@@ -79,9 +80,9 @@ function getCategoryBookCount(catId) {
 }
 
 function renderCategories() {
-    // Update "All" count
+    // Update "All" count (always shows total, not filtered count)
     const allCountEl = document.getElementById("nav-count-all");
-    if (allCountEl) allCountEl.textContent = state.books.length;
+    if (allCountEl) allCountEl.textContent = state.totalBookCount;
 
     const container = document.getElementById("category-list");
     container.innerHTML = state.categories.map(cat => {
@@ -242,6 +243,9 @@ async function loadBooks() {
     if (state.searchQuery) url.searchParams.set("search", state.searchQuery);
     state.books = await api(url.toString());
     renderBooks();
+    // Also fetch total count for "All" badge (independent of current filter)
+    const total = await api("/api/books");
+    state.totalBookCount = total.length;
     renderCategories(); // refresh category counts
 }
 
