@@ -71,6 +71,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 // ===== Categories =====
 async function loadCategories() {
     state.categories = await api("/api/categories");
+    // Ensure allBooks is loaded before rendering category counts
+    if (state.allBooks.length === 0) {
+        state.allBooks = await api("/api/books");
+    }
     renderCategories();
     populateUploadCategories();
 }
@@ -209,6 +213,7 @@ async function handleCategoryModal() {
         }
         closeCategoryModal();
         await loadCategories();
+        await loadBooks();
     } catch (e) {
         showToast(e.message, "error");
     }
