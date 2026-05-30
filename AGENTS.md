@@ -160,6 +160,44 @@ cp backups/20240101_120000/bookmanager.db ./
 
 ---
 
+## 打包规范
+
+生成 `BookManager.zip` 发行包时，**必须排除所有用户数据和运行时生成的文件**，否则 zip 包会膨胀数十倍且包含用户隐私数据。
+
+### 必须排除的文件和目录
+
+```bash
+zip -r BookManager.zip ... \
+    -x "venv/*"           \  # 虚拟环境
+    -x "books/*"          \  # 用户上传的图书原文件
+    -x "static/covers/*"  \  # 自动生成的封面图片
+    -x "*.db"             \  # 用户数据库
+    -x "*.json"           \  # 用户配置文件
+    -x ".backup/*"        \  # 自动备份目录
+    -x "backups/*"        \  # 手动备份目录
+    -x "**/__pycache__/*" \  # Python 缓存
+    -x "**/.DS_Store"     \  # macOS 系统文件
+    -x "**/.*"            \  # 隐藏文件
+```
+
+### 正确打包命令示例
+
+```bash
+cd /path/to/BookManager
+rm -f BookManager.zip
+zip -q -r BookManager.zip \
+    main.py requirements.txt config.py database.py \
+    models.py services/ templates/ static/ \
+    start.sh start.bat README.md AGENTS.md \
+    -x "**/._*" "**/.DS_Store" "**/__pycache__" \
+    -x "**/.*" "venv/*" "books/*" "static/covers/*" \
+    -x "*.db" "*.json"
+```
+
+> ⚠️ **特别注意**：`static/covers/*` 必须排除。covers 目录会随书籍数量增长，数十本书即可达到 20MB+，如果不排除会导致 zip 包从 2MB 膨胀到 20MB+。
+
+---
+
 ## 审查清单
 
 提交代码前，确认：
@@ -169,6 +207,7 @@ cp backups/20240101_120000/bookmanager.db ./
 - [ ] 没有清空/重置数据库的操作
 - [ ] 测试使用了隔离的临时数据
 - [ ] 如果修改了数据库结构，已有迁移脚本且数据完整
+- [ ] 重新打包 `BookManager.zip` 时排除了 `books/`、`static/covers/`、`*.db`、`*.json`
 
 ---
 
